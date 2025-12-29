@@ -21,12 +21,13 @@ RUN apt-get update \
     imagemagick \
     nodejs \
     npm \
-    unzip
+    unzip \
+    libz-dev # PHP GD dependency
 
-RUN install-php-extensions intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN docker-php-ext-configure imap --with-kerberos --with-imap-ssl
+# RUN docker-php-ext-configure imap --with-kerberos --with-imap-ssl
 RUN docker-php-ext-configure opcache --enable-opcache
+RUN install-php-extensions intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache
 RUN docker-php-ext-enable intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache
 
 # Install composer
@@ -107,13 +108,7 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -y \
     cron \
     git \
-    libc-client-dev \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libpng-dev \
     librabbitmq4 \
-    libwebp-dev \
-    libzip-dev \
     mariadb-client \
     supervisor \
     unzip \
