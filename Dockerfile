@@ -6,7 +6,10 @@ FROM php:${BASE_TAG} AS builder
 # Copy everything from common for building
 COPY ./common/ /common/
 
-# Install PHP extensions
+# PHP extensions install script
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+# Install dependencies
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install --no-install-recommends -y \
@@ -16,41 +19,14 @@ RUN apt-get update \
     git \
     graphicsmagick \
     imagemagick \
-    libaprutil1-dev \
-    libc-client-dev \
-    libcurl4-gnutls-dev \
-    libfreetype6-dev \
-    libgif-dev \
-    libicu-dev \
-    libjpeg-dev \
-    libjpeg62-turbo-dev \
-    libkrb5-dev \
-    libmagickwand-dev \
-    libmcrypt-dev \
-    libonig-dev \
-    libpng-dev \
-    libpq-dev \
-    librabbitmq-dev \
-    libssl-dev \
-    libtiff-dev \
-    libwebp-dev \
-    libxml2-dev \
-    libxpm-dev \
-    libz-dev \
-    libzip-dev \
     nodejs \
     npm \
     unzip
 
-RUN curl -L -o /tmp/amqp.tar.gz "https://github.com/php-amqp/php-amqp/archive/refs/tags/v2.1.2.tar.gz" \
-    && mkdir -p /usr/src/php/ext/amqp \
-    && tar -C /usr/src/php/ext/amqp -zxvf /tmp/amqp.tar.gz --strip 1 \
-    && rm /tmp/amqp.tar.gz
-
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+RUN install-php-extensions intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
     && docker-php-ext-configure opcache --enable-opcache \
-    && docker-php-ext-install intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache \
     && docker-php-ext-enable intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache
 
 # Install composer
