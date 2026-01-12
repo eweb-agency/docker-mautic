@@ -24,12 +24,10 @@ RUN apt-get update \
     unzip \
     libz-dev # PHP GD dependency
 
-RUN pecl install imap && \
-    docker-php-ext-configure imap --with-kerberos --with-imap-ssl
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 # RUN docker-php-ext-configure imap --with-kerberos --with-imap-ssl
 RUN docker-php-ext-configure opcache --enable-opcache
-RUN install-php-extensions intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd opcache
+RUN install-php-extensions intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache
 RUN docker-php-ext-enable intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache
 
 # Install composer
