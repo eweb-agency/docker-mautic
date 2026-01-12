@@ -10,6 +10,7 @@ COPY ./common/ /common/
 ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 
 # Install dependencies
+# GD Dependencies: libz-dev, libpng-dev, libfreetype6-dev, libjpeg-dev
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install --no-install-recommends -y \
@@ -22,7 +23,7 @@ RUN apt-get update \
     nodejs \
     npm \
     unzip \
-    libz-dev # PHP GD dependencies \
+    libz-dev \
     libpng-dev \
     libfreetype6-dev \
     libjpeg-dev
