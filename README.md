@@ -109,7 +109,7 @@ Version | MAUTIC_VERSION | BASE_TAG | FLAVOUR
 
 To build Mautic 6.0.6 apache, run:
 ```
-docker buildx build --build-arg FLAVOUR=apache --build-arg BASE_TAG=8.3-apache-bookworm --build-arg MAUTIC_VERSION=6.0.6 mautic/mautic:6-apache .
+docker buildx build --build-arg FLAVOUR=apache --build-arg BASE_TAG=8.3-apache-bookworm --build-arg MAUTIC_VERSION=6.0.6 -t mautic/mautic:6-apache .
 ```
 
 ## Persistent storage
