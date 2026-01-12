@@ -22,7 +22,7 @@ RUN apt-get update \
     nodejs \
     npm \
     unzip \
-    libz-dev \ # PHP GD dependencies
+    libz-dev # PHP GD dependencies \
     libpng-dev \
     libfreetype6-dev \
     libjpeg-dev
