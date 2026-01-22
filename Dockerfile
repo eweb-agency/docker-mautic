@@ -112,6 +112,11 @@ RUN apt-get update \
     cron \
     git \
     librabbitmq4 \
+    libfreetype6 \
+    libjpeg62-turbo \
+    libpng16-16 \
+    libwebp7 \
+    libc-client2007e \
     mariadb-client \
     supervisor \
     unzip \
