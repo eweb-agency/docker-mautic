@@ -29,7 +29,7 @@ RUN apt-get update \
     imagemagick \
     nodejs \
     npm \
-    unzip \
+    unzip && \
     install-php-extensions intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache
 
 # Install composer
