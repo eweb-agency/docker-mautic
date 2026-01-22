@@ -7,7 +7,15 @@ FROM php:${BASE_TAG} AS builder
 COPY ./common/ /common/
 
 # PHP extensions install script
-ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+ARG PHP_INSTALLER_VERSION=2.9.28
+ARG PHP_INSTALLER_SHA256=2f5970453effac47cfcceafd6103948d78b566c2fb922a8ff639fe249db74aa7
+
+RUN curl -fsSL \
+    https://github.com/mlocati/docker-php-extension-installer/releases/download/${PHP_INSTALLER_VERSION}/install-php-extensions \
+    -o /usr/local/bin/install-php-extensions \
+ && echo "${PHP_INSTALLER_SHA256}  /usr/local/bin/install-php-extensions" | sha256sum -c - \
+ && chmod +x /usr/local/bin/install-php-extensions
+
 
 # Install dependencies
 # GD Dependencies: libz-dev, libpng-dev, libfreetype6-dev, libjpeg-dev
