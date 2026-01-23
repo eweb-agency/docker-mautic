@@ -6,17 +6,6 @@ FROM php:${BASE_TAG} AS builder
 # Copy everything from common for building
 COPY ./common/ /common/
 
-# PHP extensions install script
-ARG IPE_VERSION=2.9.28
-ARG IPE_SHA256=2f5970453effac47cfcceafd6103948d78b566c2fb922a8ff639fe249db74aa7
-
-RUN curl -fsSL \
-    https://github.com/mlocati/docker-php-extension-installer/releases/download/${IPE_VERSION}/install-php-extensions \
-    -o /usr/local/bin/install-php-extensions \
- && echo "${IPE_SHA256}  /usr/local/bin/install-php-extensions" | sha256sum -c - \
- && chmod +x /usr/local/bin/install-php-extensions
-
-
 # Install dependencies
 RUN apt-get update \
     && apt-get upgrade -y \
@@ -30,6 +19,16 @@ RUN apt-get update \
     nodejs \
     npm \
     unzip
+
+# PHP extensions install script
+ARG IPE_VERSION=2.9.28
+ARG IPE_SHA256=2f5970453effac47cfcceafd6103948d78b566c2fb922a8ff639fe249db74aa7
+
+RUN curl -fsSL \
+    https://github.com/mlocati/docker-php-extension-installer/releases/download/${IPE_VERSION}/install-php-extensions \
+    -o /usr/local/bin/install-php-extensions && \
+    echo "${IPE_SHA256}  /usr/local/bin/install-php-extensions" | sha256sum -c - && \
+    chmod +x /usr/local/bin/install-php-extensions
 
 RUN install-php-extensions intl mbstring mysqli curl pdo_mysql zip bcmath sockets exif amqp gd imap opcache
 
