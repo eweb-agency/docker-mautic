@@ -108,6 +108,7 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -y \
     cron \
     git \
+    libavif15 \
     librabbitmq4 \
     libfreetype6 \
     libjpeg62-turbo \
