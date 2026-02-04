@@ -115,6 +115,7 @@ RUN apt-get update \
     libpng16-16 \
     libwebp7 \
     libc-client2007e \
+    libxpm4 \
     libzip4 \
     mariadb-client \
     supervisor \
