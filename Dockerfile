@@ -108,12 +108,14 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -y \
     cron \
     git \
+    libavif15 \
     librabbitmq4 \
     libfreetype6 \
     libjpeg62-turbo \
     libpng16-16 \
     libwebp7 \
     libc-client2007e \
+    libxpm4 \
     libzip4 \
     mariadb-client \
     supervisor \
