@@ -1,0 +1,20 @@
+# use this file for environment variables that can be used.
+# see https://docs.mautic.org/en/5.x/
+
+MAUTIC_DB_HOST="db"
+MAUTIC_DB_PORT="${MYSQL_PORT}"
+MAUTIC_DB_DATABASE="${MYSQL_DATABASE}"
+MAUTIC_DB_USER="${MYSQL_USER}"
+MAUTIC_DB_PASSWORD="${MYSQL_PASSWORD}"
+
+# Site URL (change for production)
+MAUTIC_SITE_URL=http://localhost:8080
+
+# Messenger queues (use Redis in production)
+MAUTIC_MESSENGER_DSN_EMAIL="doctrine://default"
+MAUTIC_MESSENGER_DSN_HIT="doctrine://default"
+
+# SAML SSO - Keycloak (uncomment and configure for SSO)
+#MAUTIC_SAML_IDP_ENTITY_ID=https://mautic.ddev.site:8443/realms/dodo
+#MAUTIC_SAML_IDP_METADATA=https://mautic.ddev.site:8443/realms/dodo/protocol/saml/descriptor
+#MAUTIC_SAML_REQUIRED_GROUP_ID=57f5ac2a-b3ca-4af6-864e-50ce800ede08

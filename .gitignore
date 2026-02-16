@@ -8,3 +8,5 @@ examples/*/*
 !examples/*/.env
 !examples/*/.mautic_env
 !examples/*/docker-compose.yml
+
+.idea/

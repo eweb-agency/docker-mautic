@@ -1,0 +1,109 @@
+x-mautic-volumes:
+  &mautic-volumes
+  - mautic_config:/var/www/html/config
+  - mautic_logs:/var/www/html/var/logs
+  - mautic_files:/var/www/html/media/files
+  - mautic_images:/var/www/html/media/images
+
+x-mautic-build:
+  &mautic-build
+  context: ../..
+  dockerfile: Dockerfile.eweb
+  args:
+    MAUTIC_VERSION: ${MAUTIC_VERSION:-7.x}
+    MAUTIC_CORE_REPO: ${MAUTIC_CORE_REPO:-https://github.com/eweb-agency/mautic.git}
+    MAUTIC_CORE_BRANCH: ${MAUTIC_CORE_BRANCH:-7.x-dev}
+
+services:
+  db:
+    image: mysql:lts
+    container_name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes: 
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: mysqladmin --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD ping
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - default
+
+  mautic_web:
+    build: *mautic-build
+    image: eweb/mautic:${IMAGE_TAG:-local}
+    container_name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_web
+    links:
+      - db:mysql
+    ports:
+      - ${MAUTIC_PORT:-8080}:80
+    volumes: *mautic-volumes
+    environment:
+      - DOCKER_MAUTIC_LOAD_TEST_DATA=${DOCKER_MAUTIC_LOAD_TEST_DATA:-false}
+      - DOCKER_MAUTIC_RUN_MIGRATIONS=${DOCKER_MAUTIC_RUN_MIGRATIONS:-false}
+    env_file:
+      - .mautic_env
+    healthcheck:
+      test: curl http://localhost
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 100
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+
+  mautic_cron:
+    image: eweb/mautic:${IMAGE_TAG:-local}
+    container_name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_cron
+    links:
+      - db:mysql
+    volumes: *mautic-volumes
+    environment:
+      - DOCKER_MAUTIC_ROLE=mautic_cron
+    env_file:
+      - .mautic_env
+    depends_on:
+      mautic_web:
+        condition: service_healthy
+    networks:
+      - default
+
+  mautic_worker:
+    image: eweb/mautic:${IMAGE_TAG:-local}
+    container_name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_worker
+    links:
+      - db:mysql
+    volumes: *mautic-volumes
+    environment:
+      - DOCKER_MAUTIC_ROLE=mautic_worker
+    env_file:
+      - .mautic_env
+    depends_on:
+      mautic_web:
+        condition: service_healthy
+    networks:
+      - default
+
+volumes:
+  mysql-data:
+    name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_mysql-data
+  mautic_config:
+    name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_config
+  mautic_logs:
+    name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_logs
+  mautic_files:
+    name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_files
+  mautic_images:
+    name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_images
+
+networks:
+  default:
+    name: ${COMPOSE_PROJECT_NAME:-eweb-mautic}_network
