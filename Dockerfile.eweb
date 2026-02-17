@@ -42,8 +42,13 @@ RUN echo "memory_limit = -1" > /usr/local/etc/php/php.ini
 ARG MAUTIC_CORE_REPO=https://github.com/eweb-agency/mautic.git
 ARG MAUTIC_CORE_BRANCH=7.x-dev
 
+# Cache bust: invalidate cache when Mautic code changes
+# This is set to the commit hash by the CI/CD workflow
+ARG CACHEBUST=1
+
 # Clone custom Mautic fork directly (instead of recommended-project)
 # This uses standard mautic/mautic structure (no /docroot subdirectory)
+# The CACHEBUST arg above forces Docker to invalidate cache when it changes
 RUN cd /opt && \
     git clone --depth 1 --branch ${MAUTIC_CORE_BRANCH} ${MAUTIC_CORE_REPO} mautic && \
     cd /opt/mautic && \
