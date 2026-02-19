@@ -61,10 +61,7 @@ RUN cd /opt/mautic && \
 # Cleanup to reduce image size
 # Keep jquery and vimeo-froogaloop2 as they are needed at runtime
 RUN cd /opt/mautic && \
-    rm -rf .git tests .github .devcontainer .ddev docs patches scripts build && \
-    rm -rf codeception.yml phpstan*.neon rector*.php ecs.php .php-cs-fixer.php && \
-    rm -rf Gruntfile.js webpack.config.js tsconfig.json package.json package-lock.json && \
-    rm -rf .gitignore .gitpod* && \
+    rm -rf .git tests .github .devcontainer .ddev .gitignore .gitpod* && \
     rm -rf /opt/mautic/var/cache/js && \
     find /opt/mautic/node_modules -mindepth 1 -maxdepth 1 -not \( -name 'jquery' -or -name 'vimeo-froogaloop2' \) | xargs rm -rf
 
@@ -155,8 +152,7 @@ RUN apt-get update \
     && rm /etc/cron.daily/*
 
 RUN cd /var/www/html && \
-    php bin/console cache:clear --env=prod
-
+    php bin/console cache:clear
 
 RUN if [ "$FLAVOUR" = "apache" ]; then \
         sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
@@ -171,4 +167,3 @@ RUN chown -R www-data:www-data /var/www/html/var/
 WORKDIR /var/www/html
 
 ENTRYPOINT ["/entrypoint.sh"]
-
