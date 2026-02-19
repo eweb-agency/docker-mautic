@@ -43,7 +43,6 @@ ARG MAUTIC_CORE_REPO=https://github.com/eweb-agency/mautic.git
 ARG MAUTIC_CORE_BRANCH=7.x-dev
 
 # Cache bust: invalidate cache when Mautic code changes
-# This is set to the commit hash by the CI/CD workflow
 ARG CACHEBUST=1
 
 # Clone custom Mautic fork directly (instead of recommended-project)
@@ -57,8 +56,7 @@ RUN cd /opt && \
 # Build frontend assets in builder stage
 RUN cd /opt/mautic && \
     npm install && \
-    php bin/console mautic:assets:generate && \
-    php bin/console cache:clear --env=prod
+    php bin/console mautic:assets:generate
 
 # Cleanup to reduce image size
 # Keep jquery and vimeo-froogaloop2 as they are needed at runtime
@@ -67,11 +65,8 @@ RUN cd /opt/mautic && \
     rm -rf codeception.yml phpstan*.neon rector*.php ecs.php .php-cs-fixer.php && \
     rm -rf Gruntfile.js webpack.config.js tsconfig.json package.json package-lock.json && \
     rm -rf .gitignore .gitpod* && \
-    rm -rf var/cache/prod_old var/cache/js var/cache/dev && \
-    find node_modules -mindepth 1 -maxdepth 1 -not \( -name 'jquery' -or -name 'vimeo-froogaloop2' \) -exec rm -rf {} + && \
-    find vendor -type d \( -name 'test' -o -name 'tests' -o -name 'Tests' -o -name 'doc' -o -name 'docs' -o -name 'Docs' \) -exec rm -rf {} + 2>/dev/null || true && \
-    find vendor -type f \( -name '*.md' -o -name '*.MD' -o -name 'LICENSE*' -o -name 'CHANGELOG*' -o -name 'UPGRADE*' \) -delete && \
-    find . -type f -name '.DS_Store' -delete
+    rm -rf /opt/mautic/var/cache/js && \
+    find /opt/mautic/node_modules -mindepth 1 -maxdepth 1 -not \( -name 'jquery' -or -name 'vimeo-froogaloop2' \) | xargs rm -rf
 
 FROM php:${BASE_TAG}
 
@@ -159,8 +154,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && rm /etc/cron.daily/*
 
-# Note: Node.js and asset building are done in builder stage
-# Assets are already built and copied from /opt/mautic
+RUN cd /var/www/html && \
+    php bin/console cache:clear --env=prod
+
 
 RUN if [ "$FLAVOUR" = "apache" ]; then \
         sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
