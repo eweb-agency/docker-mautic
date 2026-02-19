@@ -56,13 +56,13 @@ RUN cd /opt && \
 # Build frontend assets in builder stage
 RUN cd /opt/mautic && \
     npm install && \
-    php bin/console mautic:assets:generate
+    php bin/console mautic:assets:generate && \
+    php bin/console cache:clear --env=prod
 
-# Cleanup to reduce image size
-# Keep jquery and vimeo-froogaloop2 as they are needed at runtime
+# Cleanup to reduce image size (minimal cleanup like official Dockerfile)
 RUN cd /opt/mautic && \
-    rm -rf .git tests .github .devcontainer .ddev .gitignore .gitpod* && \
-    rm -rf /opt/mautic/var/cache/js && \
+    rm -rf .git tests .github .devcontainer .ddev docs patches scripts build && \
+    rm -rf var/cache/js && \
     find /opt/mautic/node_modules -mindepth 1 -maxdepth 1 -not \( -name 'jquery' -or -name 'vimeo-froogaloop2' \) | xargs rm -rf
 
 FROM php:${BASE_TAG}
@@ -112,6 +112,9 @@ COPY --from=builder /common/templates/php.ini /usr/local/etc/php/php.ini
 
 COPY --from=builder --chown=www-data:www-data /opt/mautic /var/www/html
 
+# French translations pre-installed for immediate availability
+COPY --chown=www-data:www-data ./translations/fr /var/www/html/translations/fr
+
 # Copy all files needed for startup
 COPY --from=builder --chmod=755 /common/startup/ /startup/
 COPY --from=builder --chown=www-data:www-data --chmod=755 /common/templates/ /templates/
@@ -151,7 +154,17 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && rm /etc/cron.daily/*
 
+# Install Node.JS (LTS) - needed for runtime asset regeneration
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g npm@latest && \
+    rm -rf /var/lib/apt/lists/*
+
+# Rebuild web assets in final image (like official Dockerfile)
+# This ensures cache is generated correctly with proper locale support
 RUN cd /var/www/html && \
+    npm install && \
+    php bin/console mautic:assets:generate && \
     php bin/console cache:clear --env=prod
 
 RUN if [ "$FLAVOUR" = "apache" ]; then \
