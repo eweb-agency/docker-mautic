@@ -154,17 +154,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && rm /etc/cron.daily/*
 
-# Install Node.JS (LTS) - needed for runtime asset regeneration
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g npm@latest && \
-    rm -rf /var/lib/apt/lists/*
-
-# Rebuild web assets in final image (like official Dockerfile)
-# This ensures cache is generated correctly with proper locale support
+# Rebuild web assets
 RUN cd /var/www/html && \
-    npm install && \
-    php bin/console mautic:assets:generate && \
     php bin/console cache:clear --env=prod
 
 RUN if [ "$FLAVOUR" = "apache" ]; then \
