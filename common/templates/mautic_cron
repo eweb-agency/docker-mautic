@@ -29,8 +29,17 @@ BASH_ENV=/tmp/cron.env
 # Update MaxMind GeoLite2 IP database - every hour - fix 171
 #0 * * * * php /var/www/html/bin/console mautic:iplookup:download 2>&1 | tee /tmp/stdout
 
-# Clean up old data - at 02:01 - fix 207
-#1 2 * * * php /var/www/html/bin/console mautic:maintenance:cleanup --days-old=365 2>&1 | tee /tmp/stdout - DISABLED, MAY CAUSE DATALOSS - TBD
+# Purge des visiteurs ANONYMES - at 02:01
+# Réactivée pour Sendly (2026-07-21). La prudence upstream (« MAY CAUSE
+# DATALOSS ») est sans objet ici : SANS --gdpr, mautic:maintenance:cleanup
+# ne supprime QUE les contacts anonymes (cf. l'aide de la commande) — la
+# population que ni le quota ni les KPI ne comptent (contacts identifiés
+# seuls, décisions produit 2026-07-20/21). Sans purge, le tracking web
+# accumule les visiteurs sans limite : bases gonflées, sauvegardes
+# alourdies, listes polluées. 30 jours = fenêtre de conversion
+# anonyme -> identifié préservée. Ne JAMAIS ajouter --gdpr ici : ce flag
+# étend la purge aux contacts IDENTIFIÉS inactifs.
+1 2 * * * php /var/www/html/bin/console mautic:maintenance:cleanup --days-old=30 -n 2>&1 | tee /tmp/stdout
 
 # MaxMind CCPA compliance - at 03:02 on sunday, at 03:12 on sunday
 #2 3 * * 0 php /var/www/html/bin/console mautic:donotsell:download 2>&1 | tee /tmp/stdout
