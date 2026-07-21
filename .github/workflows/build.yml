@@ -1,0 +1,70 @@
+name: Build image mautic
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Le pipeline qui manquait : les images :dev et :latest étaient bâties À LA
+# MAIN (dev figée 6 semaines, latest 4 mois — antérieure à la commande OAuth,
+# ce qui a cassé tout provisionnement de nouvelles orgs jusqu'au 21/07).
+# Désormais : push sur main → build de Dockerfile.eweb depuis le fork
+# (7.x-dev) → push :dev + :sha-<court>. Le tag :latest reste MANUEL
+# (workflow_dispatch, tag=latest) : c'est un choix de promotion, pas un
+# automatisme.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mautic_branch:
+        description: 'Branche du fork eweb-agency/mautic à embarquer'
+        required: true
+        default: '7.x-dev'
+      tag:
+        description: 'Tag principal à pousser'
+        required: true
+        type: choice
+        options: [dev, latest]
+        default: dev
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.IONOS_REGISTRY_URL }}
+          username: ${{ secrets.IONOS_REGISTRY_USERNAME }}
+          password: ${{ secrets.IONOS_REGISTRY_PASSWORD }}
+
+      - name: Compute meta
+        id: meta
+        run: |
+          SHA_SHORT="${GITHUB_SHA::7}"
+          TAG="${{ inputs.tag || 'dev' }}"
+          BRANCH="${{ inputs.mautic_branch || '7.x-dev' }}"
+          echo "tags=${{ secrets.IONOS_REGISTRY_URL }}/eweb/mautic:${TAG},${{ secrets.IONOS_REGISTRY_URL }}/eweb/mautic:sha-${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "cachebust=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.eweb
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            MAUTIC_CORE_BRANCH=${{ steps.meta.outputs.branch }}
+            CACHEBUST=${{ steps.meta.outputs.cachebust }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

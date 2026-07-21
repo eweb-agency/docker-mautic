@@ -53,6 +53,27 @@ RUN cd /opt && \
     cd /opt/mautic && \
     COMPOSER_ALLOW_SUPERUSER=1 COMPOSER_PROCESS_TIMEOUT=10000 composer install --no-dev --optimize-autoloader --no-interaction
 
+# ── Patch javer/sp-bundle 2.1.0 (Symfony 7) ──────────────────────────────────
+# DefaultController::loginAction() appelle $this->container->getParameter(),
+# méthode inexistante sur le ServiceLocator de Symfony 7 : le SSO SAML crashe
+# dès l'initiation (« Call to undefined method ServiceLocator::getParameter() »,
+# vu en production du 08/07 au 21/07 sur chaque tentative). 2.1.0 est la
+# DERNIÈRE version du bundle — son « Support Symfony 7 » a raté cette ligne,
+# qui ne s'exécute que si /saml/login est appelé sans ?idp=. Le remplacement
+# ($this->getParameter(), helper d'AbstractController) est la forme correcte.
+#
+# FAIL-CLOSED : si la ligne attendue disparaît (mise à jour du bundle), le
+# build ÉCHOUE au lieu de livrer silencieusement — soit le correctif amont
+# existe (retirer ce bloc), soit le code a bougé (re-vérifier).
+RUN set -e; \
+    F=/opt/mautic/vendor/javer/sp-bundle/src/LightSaml/SpBundle/Controller/DefaultController.php; \
+    grep -q "this->container->getParameter('lightsaml_sp.route.discovery')" "$F" || \
+      { echo "ERREUR: cible du patch SAML absente — bundle mis à jour ?"; exit 1; }; \
+    sed -i "s/this->container->getParameter('lightsaml_sp.route.discovery')/this->getParameter('lightsaml_sp.route.discovery')/" "$F"; \
+    grep -q "this->getParameter('lightsaml_sp.route.discovery')" "$F"; \
+    ! grep -q "this->container->getParameter('lightsaml_sp.route.discovery')" "$F"; \
+    echo "Patch SAML Symfony 7 appliqué."
+
 # Build frontend assets in builder stage
 RUN cd /opt/mautic && \
     npm install && \
