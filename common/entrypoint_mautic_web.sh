@@ -18,6 +18,15 @@ if php -r "include('${MAUTIC_VOLUME_CONFIG}/local.php'); exit(!empty(\$parameter
   # Non bloquant : la commande n'existe que dans l'image eweb.
   su -s /bin/bash $MAUTIC_WWW_USER -c "php $MAUTIC_CONSOLE mautic:saas:roles:harden" \
     || log "[${DOCKER_MAUTIC_ROLE}]: mautic:saas:roles:harden indisponible (non bloquant)."
+  # White-label : le volume media/images a figé les icônes Mautic du premier
+  # démarrage et masque celles de l'image (flash du vieux favicon dans
+  # l'onglet). On resynchronise les actifs de marque à chaque boot.
+  for BRAND_ASSET in favicon.ico apple-touch-icon.png; do
+    if [ -f "/var/www/html/app/assets/images/${BRAND_ASSET}" ]; then
+      cp -f "/var/www/html/app/assets/images/${BRAND_ASSET}" "/var/www/html/media/images/${BRAND_ASSET}" 2>/dev/null \
+        || log "[${DOCKER_MAUTIC_ROLE}]: copie de ${BRAND_ASSET} impossible (non bloquant)."
+    fi
+  done
 else
   log "[${DOCKER_MAUTIC_ROLE}]: Mautic is not installed, skipping migrations."
 fi
