@@ -14,6 +14,10 @@ fi
 if php -r "include('${MAUTIC_VOLUME_CONFIG}/local.php'); exit(!empty(\$parameters['db_driver']) && !empty(\$parameters['site_url']) ? 0 : 1);"; then
   log "[${DOCKER_MAUTIC_ROLE}]: Mautic is already installed, running migrations..."
   su -s /bin/bash $MAUTIC_WWW_USER -c "php $MAUTIC_CONSOLE doctrine:migrations:migrate -n"
+  # White-label : purge les permissions plugin/marketplace des rôles tenant.
+  # Non bloquant : la commande n'existe que dans l'image eweb.
+  su -s /bin/bash $MAUTIC_WWW_USER -c "php $MAUTIC_CONSOLE mautic:saas:roles:harden" \
+    || log "[${DOCKER_MAUTIC_ROLE}]: mautic:saas:roles:harden indisponible (non bloquant)."
 else
   log "[${DOCKER_MAUTIC_ROLE}]: Mautic is not installed, skipping migrations."
 fi
