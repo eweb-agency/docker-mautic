@@ -1,0 +1,105 @@
+name: Copilote IA — activer / désactiver (clé Anthropic)
+
+# Pose (ou retire) la variable SENDLY_ANTHROPIC_KEY dans le .env d'un tenant,
+# puis recrée ses conteneurs pour recharger l'environnement.
+#
+# La clé NE transite jamais par un input : elle vient du secret GitHub masqué
+# SENDLY_ANTHROPIC_KEY, forwardé à l'hôte via `envs` (masqué dans les logs) et
+# jamais imprimé. Même mécanisme d'accès hôte que le déploiement (appleboy/ssh).
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_slug:
+        description: "Tenant"
+        required: true
+        type: choice
+        options:
+          - eweb-agency
+          - fleap
+          - sdi-solution
+          - tesr
+        default: eweb-agency
+      action:
+        description: "Activer (pose la clé) ou désactiver (retire la clé)"
+        required: true
+        type: choice
+        options:
+          - enable
+          - disable
+        default: enable
+      environment:
+        description: "Environnement (déclenche le gate d'approbation)"
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+        default: development
+
+jobs:
+  activate-ai:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Activer / désactiver le copilote IA via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          AI_KEY: ${{ secrets.SENDLY_ANTHROPIC_KEY }}
+          TARGET_SLUG: ${{ inputs.target_slug }}
+          AI_ACTION: ${{ inputs.action }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Forwarde ces variables à l'hôte (valeurs masquées dans les logs) —
+          # la clé n'apparaît jamais dans le texte du script.
+          envs: AI_KEY,TARGET_SLUG,AI_ACTION
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.SSH_DEPLOY_PATH }}"
+
+            ORG_DIR="organizations/${TARGET_SLUG}"
+            ENV_FILE="${ORG_DIR}/.env"
+            COMPOSE="${ORG_DIR}/docker-compose.yml"
+
+            if [[ ! -f "$ENV_FILE" || ! -f "$COMPOSE" ]]; then
+              echo "::error::Tenant ${TARGET_SLUG} introuvable (${ENV_FILE})"
+              exit 1
+            fi
+
+            # Retire toute ligne SENDLY_ANTHROPIC_KEY existante (idempotent),
+            # sans jamais afficher sa valeur.
+            grep -v '^SENDLY_ANTHROPIC_KEY=' "$ENV_FILE" > "${ENV_FILE}.new" || true
+
+            if [[ "$AI_ACTION" == "enable" ]]; then
+              if [[ -z "${AI_KEY:-}" ]]; then
+                echo "::error::Le secret GitHub SENDLY_ANTHROPIC_KEY est vide ou absent."
+                rm -f "${ENV_FILE}.new"
+                exit 1
+              fi
+              printf 'SENDLY_ANTHROPIC_KEY=%s\n' "$AI_KEY" >> "${ENV_FILE}.new"
+              STATE="activé"
+            else
+              STATE="désactivé"
+            fi
+
+            mv "${ENV_FILE}.new" "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
+
+            # Recrée les conteneurs du tenant pour recharger l'env_file
+            # (bref redémarrage de l'instance concernée).
+            docker compose -f "$COMPOSE" up -d --force-recreate
+
+            echo "✅ Copilote IA ${STATE} sur ${TARGET_SLUG}"
+
+      - name: Résumé
+        if: always()
+        run: |
+          {
+            echo "## 🤖 Copilote IA — ${{ inputs.action }}"
+            echo ""
+            echo "- Tenant : \`${{ inputs.target_slug }}\`"
+            echo "- Action : \`${{ inputs.action }}\`"
+            echo "- La clé Anthropic ne figure jamais dans les logs (secret GitHub masqué)."
+          } >> "$GITHUB_STEP_SUMMARY"
