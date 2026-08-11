@@ -121,6 +121,14 @@ ENV DEBUG=false
 ARG FLAVOUR=apache
 ENV FLAVOUR=${FLAVOUR}
 
+# Identifiant de release UNIQUE PAR BUILD (github.run_id) : TwigPass du fork
+# le concatène à MAUTIC_VERSION pour le ?v des assets — sans lui, le ?v ne
+# change jamais entre nos déploiements et les navigateurs servent l'ANCIEN
+# app.js agrégé (morsures du 05/08 et 11/08). Doit être posé AVANT le
+# cache:clear ci-dessous : la compilation du conteneur Symfony le fige.
+ARG SENDLY_RELEASE=dev
+ENV SENDLY_RELEASE=${SENDLY_RELEASE}
+
 # Apache document root (no /docroot for standard mautic/mautic structure)
 ENV APACHE_DOCUMENT_ROOT=/var/www/html
 
@@ -143,6 +151,11 @@ COPY --from=builder --chmod=755 /common/docker-entrypoint.sh /entrypoint.sh
 COPY --from=builder --chmod=755 /common/entrypoint_mautic_web.sh /entrypoint_mautic_web.sh
 COPY --from=builder --chmod=755 /common/entrypoint_mautic_cron.sh /entrypoint_mautic_cron.sh
 COPY --from=builder --chmod=755 /common/entrypoint_mautic_worker.sh /entrypoint_mautic_worker.sh
+
+# En-têtes de cache : les agrégats /media/js|css changent à chaque
+# déploiement SOUS LA MÊME URL ; sans en-tête, Chrome cache « au jugé »
+# (heuristique) et sert du JS périmé des heures durant.
+COPY --from=builder /common/templates/apache-sendly-cache.conf /etc/apache2/conf-available/sendly-cache.conf
 
 # Copy supervisord configuration for workers
 COPY --from=builder /common/templates/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -182,7 +195,8 @@ RUN cd /var/www/html && \
 RUN if [ "$FLAVOUR" = "apache" ]; then \
         sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
         && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
-        && a2enmod rewrite; \
+        && a2enmod rewrite headers \
+        && a2enconf sendly-cache; \
     fi
 
 # Set correct ownership for Mautic var folder

@@ -66,5 +66,6 @@ jobs:
           build-args: |
             MAUTIC_CORE_BRANCH=${{ steps.meta.outputs.branch }}
             CACHEBUST=${{ steps.meta.outputs.cachebust }}
+            SENDLY_RELEASE=${{ steps.meta.outputs.cachebust }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
