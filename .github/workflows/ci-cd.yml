@@ -152,6 +152,7 @@ jobs:
             MAUTIC_CORE_BRANCH=${{ steps.meta.outputs.mautic_branch }}
             FLAVOUR=apache
             CACHEBUST=${{ steps.meta.outputs.sha }}
+            SENDLY_RELEASE=${{ github.run_id }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
