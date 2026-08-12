@@ -31,6 +31,25 @@ else
   log "[${DOCKER_MAUTIC_ROLE}]: Mautic is not installed, skipping migrations."
 fi
 
+# Le ?v des assets se fige : le conteneur Symfony compilé du tenant peut
+# survivre aux déploiements (cache persistant — même famille de piège que
+# les icônes media/images ci-dessus) et la version des assets reste celle
+# du PREMIER boot (constaté : ?v inchangé sur 5 déploiements, stable par
+# tenant). À chaque boot, si la release de l'image (app/release.txt,
+# unique par build) diffère de celle qui a compilé le cache, on purge —
+# la recompilation au premier hit lit la nouvelle release.
+RELEASE_FILE=/var/www/html/app/release.txt
+CACHE_MARK=/var/www/html/var/cache/sendly-release.txt
+if [ -f "$RELEASE_FILE" ]; then
+  if [ ! -f "$CACHE_MARK" ] || ! cmp -s "$RELEASE_FILE" "$CACHE_MARK"; then
+    log "[${DOCKER_MAUTIC_ROLE}]: nouvelle release $(cat "$RELEASE_FILE") — purge du cache Symfony."
+    rm -rf /var/www/html/var/cache/prod
+    mkdir -p /var/www/html/var/cache
+    cp "$RELEASE_FILE" "$CACHE_MARK" 2>/dev/null || true
+    chown -R www-data:www-data /var/www/html/var/cache 2>/dev/null || true
+  fi
+fi
+
 # start the proper service based on FLAVOUR
 if [ "${FLAVOUR}" = "fpm" ]; then \
   php-fpm
