@@ -144,6 +144,13 @@ COPY --from=builder --chown=www-data:www-data /opt/mautic /var/www/html
 # French translations pre-installed for immediate availability
 COPY --chown=www-data:www-data ./translations/fr /var/www/html/translations/fr
 
+# La release lue par le TwigPass du fork (FICHIER app/release.txt, pas env :
+# la compilation du conteneur Symfony se fait chez chaque tenant dans une
+# requête web, où Apache/mod_php ne transmet pas l'environnement du
+# conteneur — constaté : ?v inchangé sur deux déploiements avec l'ENV seul).
+RUN echo "${SENDLY_RELEASE}" > /var/www/html/app/release.txt \
+    && chown www-data:www-data /var/www/html/app/release.txt
+
 # Copy all files needed for startup
 COPY --from=builder --chmod=755 /common/startup/ /startup/
 COPY --from=builder --chown=www-data:www-data --chmod=755 /common/templates/ /templates/
