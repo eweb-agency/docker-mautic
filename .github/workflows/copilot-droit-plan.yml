@@ -1,0 +1,115 @@
+name: Copilote IA — droit du plan (teaser / payant)
+
+# Pose (ou retire) la variable SENDLY_AI_ENTITLED dans le .env d'un tenant,
+# puis recrée ses conteneurs pour recharger l'environnement.
+#
+# Matrice instance (PR mautic #80) : '0' → TEASER (surfaces visibles, écran
+# d'upsell, aucun appel IA — prioritaire même si une clé est posée) ;
+# '1' ou variable ABSENTE → droit acquis (l'IA suit la présence de la clé,
+# comportement rétro-compatible). OUTIL PROVISOIRE : le lot B portail
+# poussera cette variable automatiquement depuis le plan de facturation.
+#
+# ⚠️ Décision marque blanche 14/08 : ne poser le teaser ('0') QUE sur des
+# tenants DIRECTS — jamais sur une instance rattachée à une agence (l'écran
+# affiche le prix Sendly). Même mécanique d'accès hôte que activate-ai.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_slug:
+        description: "Tenant"
+        required: true
+        type: choice
+        options:
+          - eweb-agency
+          - fleap
+          - sdi-solution
+          - tesr
+        default: fleap
+      droit:
+        description: "gratuit-teaser (=0) / payant (=1) / retirer (état d'avant le lot)"
+        required: true
+        type: choice
+        options:
+          - gratuit-teaser
+          - payant
+          - retirer
+        default: gratuit-teaser
+      environment:
+        description: "Environnement (déclenche le gate d'approbation)"
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+        default: development
+
+jobs:
+  droit-plan:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Poser / retirer le droit IA via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          TARGET_SLUG: ${{ inputs.target_slug }}
+          DROIT: ${{ inputs.droit }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: TARGET_SLUG,DROIT
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.SSH_DEPLOY_PATH }}"
+
+            ORG_DIR="organizations/${TARGET_SLUG}"
+            ENV_FILE="${ORG_DIR}/.env"
+            COMPOSE="${ORG_DIR}/docker-compose.yml"
+
+            if [[ ! -f "$ENV_FILE" || ! -f "$COMPOSE" ]]; then
+              echo "::error::Tenant ${TARGET_SLUG} introuvable (${ENV_FILE})"
+              exit 1
+            fi
+
+            # Retire toute ligne SENDLY_AI_ENTITLED existante (idempotent).
+            grep -v '^SENDLY_AI_ENTITLED=' "$ENV_FILE" > "${ENV_FILE}.new" || true
+
+            case "$DROIT" in
+              gratuit-teaser)
+                echo 'SENDLY_AI_ENTITLED=0' >> "${ENV_FILE}.new"
+                ETAT="teaser (plan gratuit)"
+                ;;
+              payant)
+                echo 'SENDLY_AI_ENTITLED=1' >> "${ENV_FILE}.new"
+                ETAT="droit acquis (plan payant)"
+                ;;
+              retirer)
+                ETAT="variable retirée (état d'avant le lot)"
+                ;;
+              *)
+                echo "::error::droit inconnu : ${DROIT}"
+                rm -f "${ENV_FILE}.new"
+                exit 1
+                ;;
+            esac
+
+            mv "${ENV_FILE}.new" "$ENV_FILE"
+            chmod 600 "$ENV_FILE"
+
+            # Recrée les conteneurs du tenant pour recharger l'env_file
+            # (bref redémarrage de l'instance concernée).
+            docker compose -f "$COMPOSE" up -d --force-recreate
+
+            echo "✅ Droit IA sur ${TARGET_SLUG} : ${ETAT}"
+
+      - name: Résumé
+        if: always()
+        run: |
+          {
+            echo "## 🎫 Copilote IA — droit du plan"
+            echo ""
+            echo "- Tenant : \`${{ inputs.target_slug }}\`"
+            echo "- Droit : \`${{ inputs.droit }}\`"
+            echo "- Rappel : teaser UNIQUEMENT sur tenants directs (décision marque blanche 14/08)."
+          } >> "$GITHUB_STEP_SUMMARY"
