@@ -1,0 +1,67 @@
+name: Copilote IA — installer la clé dans l'env du provisionneur (geste unique)
+
+# La clé Anthropic partagée entre dans le .env de l'INFRA hôte, d'où le
+# compose la mappe vers le conteneur provisioner (SENDLY_ANTHROPIC_KEY).
+# À partir de là, « la clé suit le droit » : le provisionneur la pose et
+# la retire tout seul sur les tenants selon leur plan (PR provisionner #11)
+# — les workflows manuels activate-ai / copilot-droit-plan deviennent des
+# outils de secours. La clé vient du secret GitHub masqué, jamais d'un
+# input, jamais imprimée.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environnement (déclenche le gate d'approbation)"
+        required: true
+        type: choice
+        options: [development, production]
+        default: development
+
+jobs:
+  installer:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Poser la clé et recréer le provisionneur
+        uses: appleboy/ssh-action@v1
+        env:
+          AI_KEY: ${{ secrets.SENDLY_ANTHROPIC_KEY }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: AI_KEY
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.SSH_DEPLOY_PATH }}"
+
+            BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+            if [[ "$BRANCH" != "main" ]]; then
+              echo "::error::Clone sur '$BRANCH' au lieu de main — on ne touche à rien"
+              exit 1
+            fi
+            git pull --ff-only
+
+            if [[ -z "${AI_KEY:-}" ]]; then
+              echo "::error::Le secret GitHub SENDLY_ANTHROPIC_KEY est vide ou absent."
+              exit 1
+            fi
+
+            # Idempotent, valeur jamais affichée.
+            grep -v '^SENDLY_ANTHROPIC_KEY=' .env > .env.new || true
+            printf 'SENDLY_ANTHROPIC_KEY=%s\n' "$AI_KEY" >> .env.new
+            chmod 600 .env.new
+            mv .env.new .env
+
+            # Recrée le provisionneur avec le nouvel environnement (le compose
+            # mappe désormais la variable — infra-saas du 27/08).
+            docker compose up -d provisioner
+
+            sleep 5
+            if docker exec provisioner sh -c '[ -n "${SENDLY_ANTHROPIC_KEY:-}" ]'; then
+              echo "✅ La clé est dans l'environnement du provisionneur."
+            else
+              echo "::error::Le conteneur provisioner ne voit pas la clé."
+              exit 1
+            fi
