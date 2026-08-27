@@ -11,15 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       target_slug:
-        description: "Tenant"
+        description: "Tenant (slug du dossier organizations/ — liste libre : une liste figée a raté test-stripe-sendly le 27/08, comme le rollout avait raté fleap)"
         required: true
-        type: choice
-        options:
-          - eweb-agency
-          - fleap
-          - sdi-solution
-          - tesr
-        default: eweb-agency
+        type: string
       action:
         description: "Activer (pose la clé) ou désactiver (retire la clé)"
         required: true
