@@ -11,6 +11,17 @@ BASH_ENV=/tmp/cron.env
 # Trigger Update - every 15 min starting at 10 past the hour
 10,25,40,55 * * * * php /var/www/html/bin/console mautic:campaigns:trigger 2>&1 | tee /tmp/stdout
 
+# E-mails de segment programmés - toutes les 5 min. Seule une date de publication
+# passée déclenche un envoi : un e-mail de segment publié sans date n'est jamais
+# traité (allowNullForPublishedUp à faux dans EmailRepository). --channel=email
+# limite la tâche aux e-mails.
+*/5 * * * * php /var/www/html/bin/console mautic:broadcasts:send --channel=email 2>&1 | tee /tmp/stdout
+
+# E-mails retenus par le rythme choisi par le contact - toutes les 15 min, décalé
+# des tâches ci-dessus. Le plafond, la pause et le désabonnement sont relus à
+# chaque tentative.
+3,18,33,48 * * * * php /var/www/html/bin/console mautic:messages:send 2>&1 | tee /tmp/stdout
+
 # Monitored E-mail - every 1 min
 #* * * * * php /var/www/html/bin/console mautic:email:fetch 2>&1 | tee /tmp/stdout
 
