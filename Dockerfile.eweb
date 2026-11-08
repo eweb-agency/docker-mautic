@@ -143,6 +143,10 @@ COPY --from=builder --chown=www-data:www-data /opt/mautic /var/www/html
 
 # French translations pre-installed for immediate availability
 COPY --chown=www-data:www-data ./translations/fr /var/www/html/translations/fr
+# Seconde copie, hors du volume `translations` des tenants : l'entrypoint web la
+# recopie à chaque boot, sinon le volume garde les traductions du premier
+# démarrage et masque toute correction livrée par l'image.
+COPY --chown=www-data:www-data ./translations/fr /opt/sendly/translations/fr
 
 # La release lue par le TwigPass du fork (FICHIER app/release.txt, pas env :
 # la compilation du conteneur Symfony se fait chez chaque tenant dans une
