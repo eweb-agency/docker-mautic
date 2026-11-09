@@ -27,6 +27,15 @@ if php -r "include('${MAUTIC_VOLUME_CONFIG}/local.php'); exit(!empty(\$parameter
         || log "[${DOCKER_MAUTIC_ROLE}]: copie de ${BRAND_ASSET} impossible (non bloquant)."
     fi
   done
+  # Même piège pour les traductions : le volume `translations` a figé les
+  # fichiers français du premier démarrage. On recopie ceux de l'image à chaque
+  # boot (écrasement, rien n'est supprimé) ; la purge du cache ci-dessous, à
+  # chaque nouvelle release, fait relire les chaînes corrigées.
+  if [ -d /opt/sendly/translations/fr ]; then
+    { mkdir -p /var/www/html/translations/fr \
+      && cp -a /opt/sendly/translations/fr/. /var/www/html/translations/fr/; } 2>/dev/null \
+      || log "[${DOCKER_MAUTIC_ROLE}]: copie des traductions françaises impossible (non bloquant)."
+  fi
 else
   log "[${DOCKER_MAUTIC_ROLE}]: Mautic is not installed, skipping migrations."
 fi
