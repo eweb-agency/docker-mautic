@@ -17,6 +17,16 @@ BASH_ENV=/tmp/cron.env
 # limite la tâche aux e-mails.
 */5 * * * * php /var/www/html/bin/console mautic:broadcasts:send --channel=email 2>&1 | tee /tmp/stdout
 
+# SMS de segment programmés - toutes les 5 min, deux minutes après les e-mails.
+# Sans cette tâche, un SMS de type segment restait en attente pour toujours.
+# Même règle que les e-mails : seul un SMS de segment publié avec une date passée
+# part (getPublishedBroadcastsQuery dans SmsRepository) ; les contacts désinscrits
+# des SMS, déjà servis ou en file sont écartés (BroadcastQuery du SmsBundle). Les
+# SMS placés dans un scénario ne passent pas par ici (mautic:campaigns:trigger).
+# Le verrou de la commande porte le nom du canal : cette tâche et celle des
+# e-mails ne se bloquent pas.
+2-59/5 * * * * php /var/www/html/bin/console mautic:broadcasts:send --channel=sms 2>&1 | tee /tmp/stdout
+
 # E-mails retenus par le rythme choisi par le contact - toutes les 15 min, décalé
 # des tâches ci-dessus. Le plafond, la pause et le désabonnement sont relus à
 # chaque tentative.
